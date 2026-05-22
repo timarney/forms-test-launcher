@@ -3,8 +3,6 @@ import { render } from "https://esm.sh/solid-js@1.9.9/web";
 import html from "https://esm.sh/solid-js@1.9.9/html";
 import { Header } from "./components/Header.js";
 import { ModeSelector } from "./components/ModeSelector.js";
-import { Breadcrumbs } from "./components/Breadcrumbs.js";
-import { DirectorySection } from "./components/DirectorySection.js";
 import { FileSection } from "./components/FileSection.js";
 import { SelectedSpecsPanel } from "./components/SelectedSpecsPanel.js";
 
@@ -17,23 +15,12 @@ async function loadState() {
   return response.json();
 }
 
-function findNode(node, relativePath) {
-  if (node.relativePath === relativePath) {
-    return node;
-  }
-
-  for (const child of node.directories) {
-    const found = findNode(child, relativePath);
-    if (found) {
-      return found;
-    }
-  }
-
-  return null;
+function flattenFiles(node) {
+  return [...node.files, ...node.directories.flatMap((directory) => flattenFiles(directory))];
 }
 
-function relativeSegments(relativePath) {
-  return relativePath ? relativePath.split("/").filter(Boolean) : [];
+function isLocalRepoTest(file) {
+  return !file.split("/").includes("node_modules");
 }
 
 function shellQuote(value) {
@@ -47,13 +34,22 @@ function App(props) {
   ];
 
   const [currentRunner, setCurrentRunner] = createSignal(props.initialRunner);
-  const [currentPath, setCurrentPath] = createSignal("");
   const [currentMode, setCurrentMode] = createSignal(props.initialMode);
+  const [searchQuery, setSearchQuery] = createSignal("");
   const [selectedFiles, setSelectedFiles] = createSignal([]);
   const [status, setStatus] = createSignal({ message: "", kind: "default" });
 
   const currentTree = createMemo(() => props.trees[currentRunner()] ?? props.trees.playwright);
-  const currentNode = createMemo(() => findNode(currentTree(), currentPath()) ?? currentTree());
+  const allFiles = createMemo(() => flattenFiles(currentTree()).filter(isLocalRepoTest));
+  const visibleFiles = createMemo(() => {
+    const query = searchQuery().trim().toLowerCase();
+
+    if (!query) {
+      return allFiles();
+    }
+
+    return allFiles().filter((file) => file.toLowerCase().includes(query));
+  });
   const orderedFiles = createMemo(() =>
     [...selectedFiles()].sort((left, right) => left.localeCompare(right))
   );
@@ -113,7 +109,6 @@ function App(props) {
 
   const selectRunner = (runner) => {
     setCurrentRunner(runner);
-    setCurrentPath("");
     setSelectedFiles([]);
     setStatus({ message: "", kind: "default" });
   };
@@ -128,17 +123,16 @@ function App(props) {
     setSelectedFiles([]);
   };
 
-  const toggleAllInCurrentDirectory = () => {
-    const node = currentNode();
-    const allSelected =
-      node.files.length > 0 && node.files.every((file) => selectedFiles().includes(file));
+  const toggleAllVisibleFiles = () => {
+    const files = visibleFiles();
+    const allSelected = files.length > 0 && files.every((file) => selectedFiles().includes(file));
 
     if (allSelected) {
-      setSelectedFiles((current) => current.filter((file) => !node.files.includes(file)));
+      setSelectedFiles((current) => current.filter((file) => !files.includes(file)));
       return;
     }
 
-    setSelectedFiles((current) => [...new Set([...current, ...node.files])]);
+    setSelectedFiles((current) => [...new Set([...current, ...files])]);
   };
 
   const copyCommand = async () => {
@@ -212,24 +206,39 @@ function App(props) {
                 `
               : ""}
           <div class="runner-description">${() => currentRunnerOption().description}</div>
-          ${Breadcrumbs({
-            currentPath,
-            setCurrentPath,
-            relativeSegments,
-            rootLabel: () => currentTree().name,
-          })}
+
+          <div class="section-title">Search</div>
+          <label class="search-panel">
+            <input
+              class="search-input"
+              type="search"
+              value=${() => searchQuery()}
+              oninput=${(event) => setSearchQuery(event.currentTarget.value)}
+              placeholder="Search by test name or path"
+            />
+          </label>
+          <div class="results-summary">
+            ${() => `${visibleFiles().length} of ${allFiles().length} files shown`}
+          </div>
 
           <div class="actions-row">
-            <button class="action-button" type="button" onclick=${toggleAllInCurrentDirectory}>
-              Toggle all files here
+            <button class="action-button" type="button" onclick=${toggleAllVisibleFiles}>
+              Toggle visible tests
             </button>
             <button class="action-button" type="button" onclick=${clearSelection}>
               Clear selection
             </button>
           </div>
 
-          ${DirectorySection({ currentNode, setCurrentPath })}
-          ${FileSection({ currentNode, selectedFiles, toggleFile })}
+          ${FileSection({
+            files: visibleFiles,
+            selectedFiles,
+            toggleFile,
+            emptyMessage: () =>
+              searchQuery().trim().length === 0
+                ? "No tests found for this runner."
+                : "No tests match your search.",
+          })}
         </section>
 
         ${SelectedSpecsPanel({

@@ -51,12 +51,18 @@ const launcherRepoRoot = path.dirname(scriptRoot);
 const launcherAssetsRoot = path.join(scriptRoot, "test-launcher");
 let repoRoot = process.cwd();
 const validPlaywrightExtensions = [".spec.ts", ".spec.tsx"];
-const validVitestExtensions = [".test.ts", ".test.tsx", ".test.js", ".test.jsx"];
+const validVitestExtensions = [
+  ".test.ts",
+  ".test.tsx",
+  ".test.js",
+  ".test.jsx",
+];
 const runnerOptions: RunnerOption[] = [
   {
     value: "playwright",
     label: "Playwright tests",
-    description: "Run end-to-end specs from tests/e2e with headless or UI mode.",
+    description:
+      "Run end-to-end specs from tests/e2e in headless or UI mode.",
   },
   {
     value: "vitest",
@@ -65,21 +71,23 @@ const runnerOptions: RunnerOption[] = [
   },
   {
     value: "browser",
-    label: "Browser mode tests",
-    description: "Run browser-backed Vitest specs with Playwright.",
+    label: "Browser-backed Vitest",
+    description: "Run browser-backed Vitest suites with Playwright.",
   },
 ];
 const excludedPathPrefixes = [
+  "packages/core",
+  "tests/playwright",
+];
+const excludedPathSegments = new Set([
   ".git",
   ".next",
   "coverage",
   "dist",
   "node_modules",
-  "packages/core",
   "playwright-report",
   "test-results",
-  "tests/playwright",
-];
+]);
 
 const usage = `Test launcher
 
@@ -101,7 +109,9 @@ Options:
 `;
 
 function isPlaywrightTestFile(name: string) {
-  return validPlaywrightExtensions.some((extension) => name.endsWith(extension));
+  return validPlaywrightExtensions.some((extension) =>
+    name.endsWith(extension),
+  );
 }
 
 function isBrowserVitestFile(name: string) {
@@ -113,13 +123,23 @@ function isVitestFile(name: string) {
 }
 
 function shouldIgnorePath(relativePath: string) {
+  const segments = relativePath.split("/").filter(Boolean);
+
+  if (segments.some((segment) => excludedPathSegments.has(segment))) {
+    return true;
+  }
+
   return excludedPathPrefixes.some(
-    (prefix) => relativePath === prefix || relativePath.startsWith(`${prefix}/`)
+    (prefix) =>
+      relativePath === prefix || relativePath.startsWith(`${prefix}/`),
   );
 }
 
 function toWorkspacePath(absolutePath: string) {
-  return path.relative(repoRoot, absolutePath).split(path.sep).join(path.posix.sep);
+  return path
+    .relative(repoRoot, absolutePath)
+    .split(path.sep)
+    .join(path.posix.sep);
 }
 
 function getPlaywrightTestsRoot() {
@@ -142,7 +162,7 @@ async function loadEnvRepoRoot() {
     .find(
       (line) =>
         line.startsWith("TEST_LAUNCHER_REPO_ROOT=") &&
-        line.length > "TEST_LAUNCHER_REPO_ROOT=".length
+        line.length > "TEST_LAUNCHER_REPO_ROOT=".length,
     );
 
   if (!entry) {
@@ -162,8 +182,10 @@ async function collectTestFiles(dir: string): Promise<string[]> {
       if (entry.isDirectory()) {
         return collectTestFiles(absolutePath);
       }
-      return isPlaywrightTestFile(entry.name) ? [toWorkspacePath(absolutePath)] : [];
-    })
+      return isPlaywrightTestFile(entry.name)
+        ? [toWorkspacePath(absolutePath)]
+        : [];
+    }),
   );
 
   return files.flat().sort((left, right) => left.localeCompare(right));
@@ -171,7 +193,7 @@ async function collectTestFiles(dir: string): Promise<string[]> {
 
 async function collectMatchingFiles(
   dir: string,
-  matcher: (entryName: string, workspacePath: string) => boolean
+  matcher: (entryName: string, workspacePath: string) => boolean,
 ): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = await Promise.all(
@@ -188,7 +210,7 @@ async function collectMatchingFiles(
       }
 
       return matcher(entry.name, workspacePath) ? [workspacePath] : [];
-    })
+    }),
   );
 
   return files.flat().sort((left, right) => left.localeCompare(right));
@@ -205,7 +227,7 @@ async function buildTree(currentDir: string): Promise<TestTreeNode> {
     entries
       .filter((entry) => entry.isDirectory())
       .sort((left, right) => left.name.localeCompare(right.name))
-      .map((entry) => buildTree(path.join(currentDir, entry.name)))
+      .map((entry) => buildTree(path.join(currentDir, entry.name))),
   );
 
   const files = entries
@@ -249,7 +271,9 @@ function buildTreeFromFiles(name: string, files: string[]): TestTreeNode {
 
     for (const segment of segments) {
       currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-      let nextNode = currentNode.directories.find((entry) => entry.relativePath === currentPath);
+      let nextNode = currentNode.directories.find(
+        (entry) => entry.relativePath === currentPath,
+      );
 
       if (!nextNode) {
         nextNode = {
@@ -278,14 +302,17 @@ async function getRunnerFiles(runner: Runner) {
   if (runner === "browser") {
     return collectMatchingFiles(
       repoRoot,
-      (entryName, workspacePath) => isBrowserVitestFile(entryName) && !shouldIgnorePath(workspacePath)
+      (entryName, workspacePath) =>
+        isBrowserVitestFile(entryName) && !shouldIgnorePath(workspacePath),
     );
   }
 
   return collectMatchingFiles(
     repoRoot,
     (entryName, workspacePath) =>
-      isVitestFile(entryName) && !isBrowserVitestFile(entryName) && !shouldIgnorePath(workspacePath)
+      isVitestFile(entryName) &&
+      !isBrowserVitestFile(entryName) &&
+      !shouldIgnorePath(workspacePath),
   );
 }
 
@@ -295,7 +322,8 @@ async function buildRunnerTree(runner: Runner) {
   }
 
   const files = await getRunnerFiles(runner);
-  const rootLabel = runner === "vitest" ? "repo vitest tests" : "repo browser tests";
+  const rootLabel =
+    runner === "vitest" ? "repo vitest tests" : "repo browser tests";
   return buildTreeFromFiles(rootLabel, files);
 }
 
@@ -330,7 +358,9 @@ function resolveCommand(state: CliState): ResolvedCommand {
 }
 
 function runnerLabel(runner: Runner) {
-  return runnerOptions.find((option) => option.value === runner)?.label ?? runner;
+  return (
+    runnerOptions.find((option) => option.value === runner)?.label ?? runner
+  );
 }
 
 function parseArgs(argv: string[]) {
@@ -365,7 +395,9 @@ function parseArgs(argv: string[]) {
       const nextValue = argv[index + 1];
       index += 1;
       requestedRunner =
-        nextValue === "playwright" || nextValue === "vitest" || nextValue === "browser"
+        nextValue === "playwright" ||
+        nextValue === "vitest" ||
+        nextValue === "browser"
           ? nextValue
           : undefined;
       continue;
@@ -394,7 +426,14 @@ function parseArgs(argv: string[]) {
     }
   }
 
-  return { requestedRepoRoot, requestedRunner, requestedMode, files, shouldList, shouldShowHelp };
+  return {
+    requestedRepoRoot,
+    requestedRunner,
+    requestedMode,
+    files,
+    shouldList,
+    shouldShowHelp,
+  };
 }
 
 function runTests(state: CliState) {
@@ -406,9 +445,11 @@ function runTestsWithOptions(
   options: {
     exitOnComplete: boolean;
     onExit?: (code: number) => void;
-  }
+  },
 ) {
-  const selectedFiles = [...state.selectedFiles].sort((left, right) => left.localeCompare(right));
+  const selectedFiles = [...state.selectedFiles].sort((left, right) =>
+    left.localeCompare(right),
+  );
   const resolved = resolveCommand(state);
 
   if (selectedFiles.length === 0) {
@@ -417,7 +458,7 @@ function runTestsWithOptions(
   }
 
   output.write(
-    `\nRunning ${runnerLabel(state.runner)} via ${resolved.label} for ${selectedFiles.length} file(s)...\n\n`
+    `\nRunning ${runnerLabel(state.runner)} via ${resolved.label} for ${selectedFiles.length} file(s)...\n\n`,
   );
 
   const child = spawn(resolved.command, [...resolved.args, ...selectedFiles], {
@@ -439,7 +480,11 @@ function runTestsWithOptions(
 
 function openBrowser(url: string) {
   const command =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+    process.platform === "darwin"
+      ? "open"
+      : process.platform === "win32"
+        ? "start"
+        : "xdg-open";
   const child = spawn(command, [url], {
     stdio: "ignore",
     detached: true,
@@ -454,7 +499,10 @@ function contentTypeForPath(assetPath: string) {
   return "text/html; charset=utf-8";
 }
 
-async function startWebMode(initialRunner?: Runner, initialMode?: PlaywrightMode) {
+async function startWebMode(
+  initialRunner?: Runner,
+  initialMode?: PlaywrightMode,
+) {
   const [playwrightTree, vitestTree, browserTree] = await Promise.all([
     buildRunnerTree("playwright"),
     buildRunnerTree("vitest"),
@@ -468,7 +516,10 @@ async function startWebMode(initialRunner?: Runner, initialMode?: PlaywrightMode
     const requestUrl = new URL(req.url ?? "/", "http://127.0.0.1");
 
     if (req.method === "GET" && requestUrl.pathname === "/") {
-      const html = await readFile(path.join(launcherAssetsRoot, "index.html"), "utf8");
+      const html = await readFile(
+        path.join(launcherAssetsRoot, "index.html"),
+        "utf8",
+      );
       res.writeHead(200, { "content-type": contentTypeForPath("index.html") });
       res.end(html);
       return;
@@ -486,7 +537,7 @@ async function startWebMode(initialRunner?: Runner, initialMode?: PlaywrightMode
           runners: runnerOptions,
           initialRunner: runner,
           initialMode: mode,
-        })
+        }),
       );
       return;
     }
@@ -499,7 +550,9 @@ async function startWebMode(initialRunner?: Runner, initialMode?: PlaywrightMode
 
     if (req.method === "GET") {
       const relativeAssetPath = requestUrl.pathname.replace(/^\//, "");
-      const assetPath = path.normalize(path.join(launcherAssetsRoot, relativeAssetPath));
+      const assetPath = path.normalize(
+        path.join(launcherAssetsRoot, relativeAssetPath),
+      );
 
       if (!assetPath.startsWith(launcherAssetsRoot)) {
         res.writeHead(403, { "content-type": "text/plain; charset=utf-8" });
@@ -537,11 +590,14 @@ async function startWebMode(initialRunner?: Runner, initialMode?: PlaywrightMode
       const selectedMode = parsed.mode ?? mode;
 
       if (activeRun) {
-        res.writeHead(409, { "content-type": "application/json; charset=utf-8" });
+        res.writeHead(409, {
+          "content-type": "application/json; charset=utf-8",
+        });
         res.end(
           JSON.stringify({
-            message: "A test run is already in progress. Wait for it to finish before starting another.",
-          })
+            message:
+              "A test run is already in progress. Wait for it to finish before starting another.",
+          }),
         );
         return;
       }
@@ -550,7 +606,7 @@ async function startWebMode(initialRunner?: Runner, initialMode?: PlaywrightMode
       res.end(
         JSON.stringify({
           message: `Started ${runnerLabel(selectedRunner)} for ${selectedFiles.size} selected file(s). Check the terminal for output.`,
-        })
+        }),
       );
 
       activeRun = runTestsWithOptions(
@@ -564,7 +620,7 @@ async function startWebMode(initialRunner?: Runner, initialMode?: PlaywrightMode
           onExit: () => {
             activeRun = null;
           },
-        }
+        },
       );
       return;
     }
@@ -586,7 +642,7 @@ async function startWebMode(initialRunner?: Runner, initialMode?: PlaywrightMode
   const url = `http://127.0.0.1:${address.port}`;
   output.write(`\nOpened test launcher at ${url}\n`);
   output.write(
-    "Use the browser UI to click into directories, select one or more files, and run them.\n\n"
+    "Use the browser UI to search, select one or more files, and run them.\n\n",
   );
   openBrowser(url);
 }
@@ -617,7 +673,10 @@ async function main() {
   if (files.length > 0) {
     runTests({
       runner,
-      mode: runner === "playwright" ? requestedMode ?? "playwright:headless:local" : undefined,
+      mode:
+        runner === "playwright"
+          ? (requestedMode ?? "playwright:headless:local")
+          : undefined,
       selectedFiles: new Set(files),
     });
     return;
@@ -627,6 +686,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exit(1);
 });

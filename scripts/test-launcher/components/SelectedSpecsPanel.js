@@ -1,5 +1,9 @@
 import html from "https://esm.sh/solid-js@1.9.9/html";
 
+function fileLabel(file) {
+  return file.split("/").filter(Boolean).at(-1) ?? file;
+}
+
 export function SelectedSpecsPanel(props) {
   return html`
     <aside class="panel">
@@ -16,7 +20,7 @@ export function SelectedSpecsPanel(props) {
                       checked=${true}
                       onchange=${() => props.toggleFile(file)}
                     />
-                    <span class="selected-path">${file}</span>
+                    <span class="file-label" title=${file}>${fileLabel(file)}</span>
                   </label>
                 `
               )}
@@ -24,7 +28,7 @@ export function SelectedSpecsPanel(props) {
 
       <div class="command-panel">
         <div class="command-copy-row">
-          <div class="command-label">Reusable command</div>
+          <div class="command-label">Command preview</div>
           <button
             class="copy-button"
             type="button"
