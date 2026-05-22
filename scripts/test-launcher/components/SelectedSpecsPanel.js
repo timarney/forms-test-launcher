@@ -20,9 +20,11 @@ export function SelectedSpecsPanel(props) {
                       checked=${true}
                       onchange=${() => props.toggleFile(file)}
                     />
-                    <span class="file-label" title=${file}>${fileLabel(file)}</span>
+                    <span class="file-label" title=${file}
+                      >${fileLabel(file)}</span
+                    >
                   </label>
-                `
+                `,
               )}
       </div>
 
@@ -41,8 +43,13 @@ export function SelectedSpecsPanel(props) {
         <pre class="command-preview">${() => "$ " + props.command()}</pre>
       </div>
 
-      <button class="run-button" type="button" onclick=${props.runTests}>Run selected tests</button>
-      <div class=${() => (props.status().kind === "success" ? "status success" : "status")}>
+      <button class="run-button" type="button" onclick=${props.runTests}>
+        Run selected tests
+      </button>
+      <div
+        class=${() =>
+          props.status().kind === "success" ? "status success" : "status"}
+      >
         ${() => props.status().message}
       </div>
     </aside>

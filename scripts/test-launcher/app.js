@@ -16,7 +16,10 @@ async function loadState() {
 }
 
 function flattenFiles(node) {
-  return [...node.files, ...node.directories.flatMap((directory) => flattenFiles(directory))];
+  return [
+    ...node.files,
+    ...node.directories.flatMap((directory) => flattenFiles(directory)),
+  ];
 }
 
 function isLocalRepoTest(file) {
@@ -39,8 +42,12 @@ function App(props) {
   const [selectedFiles, setSelectedFiles] = createSignal([]);
   const [status, setStatus] = createSignal({ message: "", kind: "default" });
 
-  const currentTree = createMemo(() => props.trees[currentRunner()] ?? props.trees.playwright);
-  const allFiles = createMemo(() => flattenFiles(currentTree()).filter(isLocalRepoTest));
+  const currentTree = createMemo(
+    () => props.trees[currentRunner()] ?? props.trees.playwright,
+  );
+  const allFiles = createMemo(() =>
+    flattenFiles(currentTree()).filter(isLocalRepoTest),
+  );
   const visibleFiles = createMemo(() => {
     const query = searchQuery().trim().toLowerCase();
 
@@ -51,16 +58,19 @@ function App(props) {
     return allFiles().filter((file) => file.toLowerCase().includes(query));
   });
   const orderedFiles = createMemo(() =>
-    [...selectedFiles()].sort((left, right) => left.localeCompare(right))
+    [...selectedFiles()].sort((left, right) => left.localeCompare(right)),
   );
   const currentRunnerOption = createMemo(
-    () => props.runners.find((runner) => runner.value === currentRunner()) ?? props.runners[0]
+    () =>
+      props.runners.find((runner) => runner.value === currentRunner()) ??
+      props.runners[0],
   );
   const command = createMemo(() => {
     const runner = currentRunner();
 
     if (runner === "playwright") {
-      const modeFlag = currentMode() === "playwright:ui:local" ? "ui" : "headless";
+      const modeFlag =
+        currentMode() === "playwright:ui:local" ? "ui" : "headless";
 
       if (orderedFiles().length === 0) {
         return (
@@ -91,7 +101,12 @@ function App(props) {
         : "lib/example.test.ts";
 
     if (orderedFiles().length === 0) {
-      return "yarn test:launch -- --runner " + runner + " --files " + shellQuote(sampleFile);
+      return (
+        "yarn test:launch -- --runner " +
+        runner +
+        " --files " +
+        shellQuote(sampleFile)
+      );
     }
 
     return [
@@ -115,7 +130,9 @@ function App(props) {
 
   const toggleFile = (file) => {
     setSelectedFiles((current) =>
-      current.includes(file) ? current.filter((entry) => entry !== file) : [...current, file]
+      current.includes(file)
+        ? current.filter((entry) => entry !== file)
+        : [...current, file],
     );
   };
 
@@ -125,10 +142,13 @@ function App(props) {
 
   const toggleAllVisibleFiles = () => {
     const files = visibleFiles();
-    const allSelected = files.length > 0 && files.every((file) => selectedFiles().includes(file));
+    const allSelected =
+      files.length > 0 && files.every((file) => selectedFiles().includes(file));
 
     if (allSelected) {
-      setSelectedFiles((current) => current.filter((file) => !files.includes(file)));
+      setSelectedFiles((current) =>
+        current.filter((file) => !files.includes(file)),
+      );
       return;
     }
 
@@ -149,7 +169,8 @@ function App(props) {
       setStatus({ message: "Command copied to clipboard.", kind: "success" });
     } catch {
       setStatus({
-        message: "Clipboard copy failed. You can still copy the command from the preview.",
+        message:
+          "Clipboard copy failed. You can still copy the command from the preview.",
         kind: "default",
       });
     }
@@ -157,12 +178,16 @@ function App(props) {
 
   const runTests = async () => {
     if (orderedFiles().length === 0) {
-      setStatus({ message: "Select at least one test first.", kind: "default" });
+      setStatus({
+        message: "Select at least one test first.",
+        kind: "default",
+      });
       return;
     }
 
     setStatus({
-      message: "Starting " + currentRunnerOption().label + " in the terminal...",
+      message:
+        "Starting " + currentRunnerOption().label + " in the terminal...",
       kind: "default",
     });
 
@@ -205,7 +230,9 @@ function App(props) {
                   })}
                 `
               : ""}
-          <div class="runner-description">${() => currentRunnerOption().description}</div>
+          <div class="runner-description">
+            ${() => currentRunnerOption().description}
+          </div>
 
           <div class="section-title">Search</div>
           <label class="search-panel">
@@ -218,14 +245,23 @@ function App(props) {
             />
           </label>
           <div class="results-summary">
-            ${() => `${visibleFiles().length} of ${allFiles().length} files shown`}
+            ${() =>
+              `${visibleFiles().length} of ${allFiles().length} files shown`}
           </div>
 
           <div class="actions-row">
-            <button class="action-button" type="button" onclick=${toggleAllVisibleFiles}>
+            <button
+              class="action-button"
+              type="button"
+              onclick=${toggleAllVisibleFiles}
+            >
               Toggle visible tests
             </button>
-            <button class="action-button" type="button" onclick=${clearSelection}>
+            <button
+              class="action-button"
+              type="button"
+              onclick=${clearSelection}
+            >
               Clear selection
             </button>
           </div>
@@ -269,9 +305,11 @@ async function main() {
     render(
       () =>
         html`<div class="shell">
-          <div class="status">${error instanceof Error ? error.message : String(error)}</div>
+          <div class="status">
+            ${error instanceof Error ? error.message : String(error)}
+          </div>
         </div>`,
-      root
+      root,
     );
   }
 }

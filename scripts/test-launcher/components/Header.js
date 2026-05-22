@@ -7,7 +7,8 @@ export function Header() {
       <h1 class="title">Test Launcher</h1>
       <p class="subtitle">
         Switch between Playwright, Vitest, and browser-backed Vitest. Search,
-        multi-select, copy the command, and launch the same local flows you already use.
+        multi-select, copy the command, and launch the same local flows you
+        already use.
       </p>
     </div>
   `;

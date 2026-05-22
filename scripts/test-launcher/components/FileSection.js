@@ -11,9 +11,11 @@ export function FileSection(props) {
       <div class="file-list">
         ${() =>
           props.files().length === 0
-            ? html`<div class="empty">${typeof props.emptyMessage === "function"
-                ? props.emptyMessage()
-                : "No files to show."}</div>`
+            ? html`<div class="empty">
+                ${typeof props.emptyMessage === "function"
+                  ? props.emptyMessage()
+                  : "No files to show."}
+              </div>`
             : props.files().map(
                 (file) => html`
                   <label class="file-item">
@@ -22,9 +24,11 @@ export function FileSection(props) {
                       checked=${() => props.selectedFiles().includes(file)}
                       onchange=${() => props.toggleFile(file)}
                     />
-                    <span class="file-label" title=${file}>${fileLabel(file)}</span>
+                    <span class="file-label" title=${file}
+                      >${fileLabel(file)}</span
+                    >
                   </label>
-                `
+                `,
               )}
       </div>
     </div>

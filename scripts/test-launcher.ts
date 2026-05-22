@@ -61,8 +61,7 @@ const runnerOptions: RunnerOption[] = [
   {
     value: "playwright",
     label: "Playwright tests",
-    description:
-      "Run end-to-end specs from tests/e2e in headless or UI mode.",
+    description: "Run end-to-end specs from tests/e2e in headless or UI mode.",
   },
   {
     value: "vitest",
@@ -75,10 +74,7 @@ const runnerOptions: RunnerOption[] = [
     description: "Run browser-backed Vitest suites with Playwright.",
   },
 ];
-const excludedPathPrefixes = [
-  "packages/core",
-  "tests/playwright",
-];
+const excludedPathPrefixes = ["packages/core", "tests/playwright"];
 const excludedPathSegments = new Set([
   ".git",
   ".next",
