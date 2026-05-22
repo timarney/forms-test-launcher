@@ -1,0 +1,12 @@
+{
+  "name": "forms-test-launcher",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:launch": "tsx scripts/test-launcher.ts",
+    "test:launch:help": "tsx scripts/test-launcher.ts --help"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}
